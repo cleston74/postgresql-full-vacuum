@@ -1,1 +1,0 @@
-# postgresql-full-vacuum
