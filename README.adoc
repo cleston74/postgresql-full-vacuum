@@ -99,9 +99,7 @@ if [ $lastSun -eq $currentDay ]; then
       finalTimeSum=$(TZ=":America/Fortaleza" date  +%s) # Captura o segundo TimeStamp
       totalRecordSum=$(( finalTimeSum - initialTimeSum )) # Diferenca entre os TimeStamps
       totalTime=$(date -d @$totalRecordSum +%H:%M:%S)
-      vResultadoZabbix="Table: $idTable Date: $logDate Started: $initialTime Finished: $finishTime Total Time: $totalTime" >> "$logDirectory/$logFile"
       echo "Day: $dayWeekName [$currentDay] - Table: $idTable - Size: $sizeBefore-$sizeAfter MB - Date: $logDate Started: $initialTime Finished: $finishTime Total Time: $totalTime" >> "$logDirectory/$logFile"
-      functionBanner "$vResultadoZabbix"
     fi
   done < $logDirectory/listtables.dat
 fi
