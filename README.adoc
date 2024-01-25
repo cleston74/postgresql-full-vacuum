@@ -111,3 +111,5 @@ fi
 ** Quando executado, será gravado um arquivo de log em /var/tmp/full_vacuum_v1.log com informações sobre as tabelas afetadas.
 
 *** Saída do log
+
+image::images/full_vacuum_v1.png[Sunset,998,330]
