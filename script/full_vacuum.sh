@@ -35,7 +35,7 @@ functionBanner() {
 }
 
 #---[ Log control and Validations ]
-[[ ! -f "$logDirectory/$logFile" ]] &&  > "$logDirectory/$logFile"
+[[ ! -f "$logDirectory/$logFile" ]] && : > "$logDirectory/$logFile"
 
 [[ "$totalLines" -ge 500 ]] && sed -i "$logDirectory/$logFile" -e '1,100d'
 
