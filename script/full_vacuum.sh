@@ -8,17 +8,14 @@
 #######################################################################################################################################
 
 #---[ Environment Variables ]
-clear
-set +x
 source /root/.bashrc
 logDirectory="/var/tmp"
-logFile=$(basename -s .sh "$0").log
+logFile="$logDirectory/$(basename -s .sh "$0").log"
 logDate=$(TZ=":America/Fortaleza" date +%d-%m-%Y)
-dayWeekName=$(TZ=":America/Fortaleza" date +%a)  # |Seg |Ter |Qua |Qui |Sex |Sab |Dom
-totalLines=$(wc -l < "$logDirectory/$logFile")
+dayWeekName=$(TZ=":America/Fortaleza" date +%a)
+lastSun=$(cal | awk '{print $1}' | grep '[0-9]' | tail -n1)
 currentDay=$(date +%e)
-lastSun=$(date -d "-$(date +%d) days +1 month -$(date +%w) days" +'%d')
-appVersion=2.0.4
+appVersion=2.1.0
 appName=$(basename "$0")
 export PGPASSWORD=$vDBSenha
 export TERM=xterm
@@ -35,14 +32,23 @@ functionBanner() {
 }
 
 #---[ Log control and Validations ]
-[[ ! -f "$logDirectory/$logFile" ]] && : > "$logDirectory/$logFile"
+[[ ! -f "$logFile" ]] && : > "$logFile"
+totalLines=$(wc -l < "$logFile")
+[[ "$totalLines" -ge 500 ]] && sed -i '1,100d' "$logFile"
 
-[[ "$totalLines" -ge 500 ]] && sed -i "$logDirectory/$logFile" -e '1,100d'
+pgrep -f "^$appName$" &>/dev/null && {
+    functionBanner ">>>>> $appName is running <<<<<"
+    exit 1
+}
+
+if [[ -z "$vDBHost" || -z "$vDBUser" || -z "$vDBNome" || -z "$vDBSenha" ]]; then
+    echo "Error: Variable not set."
+    exit 1
+fi
 
 #---[ Start Procedure ]
 if [ $lastSun -eq $currentDay ]; then
-  # Generate List Tables
-  psql -h "$vDBHost" -U "$vDBUser"  -d "$vDBNome" -t -A -c "SELECT esquema || '.' || tabela tabela FROM (SELECT tablename AS tabela, schemaname AS esquema, schemaname||'.'||tablename AS esq_tab FROM pg_catalog.pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema', 'pg_toast') ) AS x ORDER BY pg_total_relation_size(esq_tab) DESC LIMIT 20;" > $logDirectory/listtables.dat
+  psql -h "$vDBHost" -U "$vDBUser"  -d "$vDBNome" -t -A -c "SELECT esquema || '.' || tabela tabela FROM (SELECT tablename AS tabela, schemaname AS esquema, schemaname||'.'||tablename AS esq_tab FROM pg_catalog.pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema', 'pg_toast') ) AS x ORDER BY pg_total_relation_size(esq_tab) DESC LIMIT 40;" > $logDirectory/listtables.dat
   while read idTable; do
     if [ -n "$idTable" ]; then
       clear
@@ -51,15 +57,15 @@ if [ $lastSun -eq $currentDay ]; then
                      ""                                         \
                      "Database Name ..: $vDBNome"               \
                      "Table Name .....: $idTable"
-      initialTimeSum=$(TZ=":America/Fortaleza" date  +%s) # Captura o primeiro TimeStamp
-      sizeBefore=$(psql -h "$vDBHost" -U "$vDBUser"  -d "$vDBNome" -t -c "\dt+ $idTable" | awk '{print $9}')
+      initialTimeSum=$(TZ=":America/Fortaleza" date  +%s)
+      sizeBefore=$(psql -h "$vDBHost" -U "$vDBUser" -d "$vDBNome" -t -A -c "SELECT pg_size_pretty(pg_total_relation_size('$idTable'));")
       psql -h "$vDBHost" -U "$vDBUser"  -d "$vDBNome" -c "VACUUM (FULL, VERBOSE, ANALYZE, TRUNCATE) $idTable ; "
-      sizeAfter=$(psql -h "$vDBHost" -U "$vDBUser"  -d "$vDBNome" -t -c "\dt+ $idTable" | awk '{print $9}')
+      sizeAfter=$(psql -h "$vDBHost" -U "$vDBUser" -d "$vDBNome" -t -A -c "SELECT pg_size_pretty(pg_total_relation_size('$idTable'));")
       finishTime=$(TZ=":America/Fortaleza" date +%T)
-      finalTimeSum=$(TZ=":America/Fortaleza" date  +%s) # Captura o segundo TimeStamp
-      totalRecordSum=$(( finalTimeSum - initialTimeSum )) # Diferenca entre os TimeStamps
+      finalTimeSum=$(TZ=":America/Fortaleza" date  +%s)
+      totalRecordSum=$(( finalTimeSum - initialTimeSum ))
       totalTime=$(date -d @$totalRecordSum +%H:%M:%S)
-      echo "Day: $dayWeekName [$currentDay] - Table: $idTable - Size: $sizeBefore-$sizeAfter MB - Date: $logDate Started: $initialTime Finished: $finishTime Total Time: $totalTime" >> "$logDirectory/$logFile"
+      echo "Day: $dayWeekName [$currentDay] - Table: $idTable - Size: $sizeBefore-$sizeAfter - Date: $logDate Started: $initialTime Finished: $finishTime Total Time: $totalTime" >> "$logFile"
     fi
   done < $logDirectory/listtables.dat
 fi
