@@ -83,6 +83,3 @@ if [ $lastSun -eq $currentDay ]; then
     fi
   done < $logDirectory/listtables.dat
 fi
-
-#---[ File Permissions ]
-chown zabbix.zabbix "$logFile"
